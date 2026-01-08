@@ -5,7 +5,7 @@ export class TaskMapper {
     const lines: string[] = [];
 
     // Checkbox
-    const checkbox = task.status === 2 ? "[x]" : "[ ]";
+    const checkbox = this.isCompleted(task.status) ? "[x]" : "[ ]";
 
     // Title with metadata
     let title = task.title;
@@ -217,5 +217,9 @@ export class TaskMapper {
       reminders: response.reminders as string[],
       kind: response.kind as string,
     };
+  }
+
+  private isCompleted(status?: number): boolean {
+    return status === 1 || status === 2;
   }
 }

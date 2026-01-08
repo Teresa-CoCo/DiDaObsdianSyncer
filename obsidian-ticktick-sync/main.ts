@@ -165,21 +165,38 @@ export default class TickTickSyncPlugin extends Plugin {
       return;
     }
 
-    if (!this.settings.selectedProjects.length) {
+    let projectId = this.settings.selectedProjects[0];
+
+    // Fallback: pick the first available project if none is selected
+    if (!projectId) {
+      try {
+        const projects = await this.client.getProjects();
+        projectId = projects[0]?.id;
+      } catch (error) {
+        console.error("Failed to load projects for quick task creation:", error);
+      }
+    }
+
+    if (!projectId) {
       new Notice("Please select a project in settings");
       return;
     }
 
-    // Create task in the first selected project
-    const projectId = this.settings.selectedProjects[0];
+    // Create task in the resolved project
     try {
       const task = await this.client.createTask({
-        title: content,
+        title: content.trim(),
         projectId,
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
       new Notice(`Task created: ${task.title}`);
+
+      if (this.syncManager) {
+        await this.syncManager.fullSync();
+      }
     } catch (error) {
-      new Notice(`Failed to create task: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      new Notice(`Failed to create task: ${message}`);
     }
   }
 
@@ -189,15 +206,18 @@ export default class TickTickSyncPlugin extends Plugin {
       return;
     }
 
-    if (!this.settings.selectedProjects.length) {
-      new Notice("Please select a project in settings");
-      return;
+    // Prefer selected projects; fall back to all available projects if none are selected
+    let projects = await this.getSelectedProjects();
+    if (!projects.length && this.client) {
+      try {
+        projects = await this.client.getProjects();
+      } catch (error) {
+        console.error("Failed to load projects for task creation:", error);
+      }
     }
 
-    // Get project names
-    const projects = await this.getSelectedProjects();
     if (!projects.length) {
-      new Notice("No projects selected");
+      new Notice("No projects available. Please connect and select projects in settings.");
       return;
     }
 
@@ -278,21 +298,33 @@ export default class TickTickSyncPlugin extends Plugin {
               }
 
               try {
-                const dueDate = this.dueDate
-                  ? new Date(this.dueDate).toISOString()
-                  : undefined;
+                let dueDate: string | undefined;
+                const trimmedDue = this.dueDate.trim();
+                if (trimmedDue) {
+                  const parsed = new Date(trimmedDue);
+                  if (isNaN(parsed.getTime())) {
+                    new Notice("Invalid due date. Use YYYY-MM-DD or YYYY-MM-DDTHH:mm");
+                    return;
+                  }
+                  dueDate = parsed.toISOString();
+                }
 
                 await this.plugin.client!.createTask({
-                  title: this.title,
+                  title: this.title.trim(),
                   projectId: this.projectId,
                   dueDate,
                   priority: this.priority || undefined,
+                  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
                 });
 
                 new Notice("Task created successfully!");
+                if (this.plugin.syncManager) {
+                  await this.plugin.syncManager.fullSync();
+                }
                 this.close();
               } catch (error) {
-                new Notice(`Failed to create task: ${error.message}`);
+                const message = error instanceof Error ? error.message : String(error);
+                new Notice(`Failed to create task: ${message}`);
               }
             })
           )

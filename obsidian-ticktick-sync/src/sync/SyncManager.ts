@@ -70,7 +70,7 @@ export class SyncManager {
 
         for (const task of tasks) {
           // Filter by status
-          const isCompleted = task.status === 2;
+          const isCompleted = this.isCompletedStatus(task.status);
 
           // If not including completed tasks, skip completed ones
           if (!this.settings.includeCompleted && isCompleted) {
@@ -155,7 +155,7 @@ export class SyncManager {
           const existingTask = await this.client.getTask(projectId, task.ticktickId);
 
           // Check for status changes
-          const wasCompleted = existingTask.status === 2;
+          const wasCompleted = this.isCompletedStatus(existingTask.status);
           const isNowCompleted = task.completed;
 
           if (wasCompleted && !isNowCompleted) {
@@ -322,8 +322,8 @@ export class SyncManager {
     lines.push("");
 
     // Separate uncompleted and completed tasks
-    const uncompletedTasks = tasks.filter((t) => t.status !== 2);
-    const completedTasks = tasks.filter((t) => t.status === 2);
+    const uncompletedTasks = tasks.filter((t) => !this.isCompletedStatus(t.status));
+    const completedTasks = tasks.filter((t) => this.isCompletedStatus(t.status));
 
     // Categorize uncompleted tasks by due date
     const uncompletedGroups: TaskGroup = {
@@ -492,6 +492,10 @@ export class SyncManager {
       const newPath = path.endsWith(".md") ? path : path + ".md";
       await this.app.vault.create(newPath, content);
     }
+  }
+
+  private isCompletedStatus(status?: number): boolean {
+    return status === 1 || status === 2;
   }
 
   private get app() {
