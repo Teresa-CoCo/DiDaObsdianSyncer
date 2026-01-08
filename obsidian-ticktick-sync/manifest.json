@@ -1,0 +1,9 @@
+{
+  "id": "obsidian-ticktick-sync",
+  "name": "TickTick Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Sync TickTick/Dida365 tasks with Obsidian",
+  "author": "",
+  "isDesktopOnly": false
+}
